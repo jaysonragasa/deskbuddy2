@@ -82,6 +82,16 @@ export default function App() {
   const lastActiveTime = useRef<number>(Date.now());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [testMessage, setTestMessage] = useState('');
+  const [isSubtitleVisible, setIsSubtitleVisible] = useState(false);
+
+  useEffect(() => {
+    if (isSpeaking) {
+      setIsSubtitleVisible(true);
+    } else {
+      const timer = setTimeout(() => setIsSubtitleVisible(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSpeaking]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -609,7 +619,11 @@ export default function App() {
         {settings.showSubtitles && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 max-w-2xl w-full flex flex-col items-center gap-3 pointer-events-none z-10 px-4">
              {log.filter(e => e.role === 'mochi').slice(-1).map((entry, index) => (
-               <div key={index} className="px-6 py-4 rounded-3xl bg-black/80 backdrop-blur-md border border-blue-500/30 text-white fill-blue-500/10 font-medium text-center text-xl w-auto max-w-full shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+               <div 
+                 key={index} 
+                 className={`px-8 py-4 rounded-3xl bg-black/80 backdrop-blur-md text-white font-medium text-center text-xl w-auto max-w-full shadow-2xl transition-opacity duration-500 ease-in-out ${isSubtitleVisible ? 'opacity-100' : 'opacity-0'}`}
+                 style={{ textShadow: '0 0 12px rgba(255,255,255,0.7)' }}
+               >
                  {entry.text}
                </div>
              ))}
