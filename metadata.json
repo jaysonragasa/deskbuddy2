@@ -1,0 +1,6 @@
+{
+  "name": "Mochi AI Face",
+  "description": "An animated face that tracks gaze and speaks via Ollama.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": []
+}
