@@ -16,6 +16,14 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
   }, [isListening]);
 
   useEffect(() => {
+    // Pre-load voices on mount to avoid silent first utterance
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setStatusText('Speech Recognition not supported in this browser.');
@@ -65,6 +73,11 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
       recognitionRef.current?.stop();
     };
   }, []); // Bind once to avoid restart loops, use refs where needed
+
+  const submitMessage = async (text: string) => {
+    setLog(prev => [...prev, { role: 'user', text }]);
+    await handleTranscription(text);
+  };
 
   const toggleListening = () => {
     if (isListening) {
@@ -139,18 +152,38 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
   };
 
   const speakText = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window)) {
+      console.warn('speechSynthesis not supported');
+      return;
+    }
     
+    console.log('Attempting to speak:', text);
     window.speechSynthesis.cancel(); // Cancel any pending utterances to avoid getting stuck
+    
+    // Sometimes JS garbage collects utterances, keep a global reference
+    (window as any).__mochi_utterance = new SpeechSynthesisUtterance(text);
+    const utterance = (window as any).__mochi_utterance;
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    // Use default voice explicitly to prevent some browser silent failures
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      // Find a suitable english voice or fallback
+      const voice = voices.find(v => v.name.includes('Google') || v.lang.includes('en')) || voices[0];
+      if (voice) utterance.voice = voice;
+    }
+
+    utterance.volume = 1;
+    utterance.rate = 1;
+    utterance.pitch = 1.2;
 
     utterance.onstart = () => {
+      console.log('Speech started');
       setIsSpeaking(true);
       setStatusText('Speaking...');
     };
 
     utterance.onend = () => {
+      console.log('Speech ended');
       setIsSpeaking(false);
       setCurrentEmotion('IDLE');
       if (isListeningRef.current) {
@@ -161,16 +194,22 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
       }
     };
 
-    utterance.onerror = () => {
+    utterance.onerror = (e: any) => {
+      console.error('Speech error', e);
       setIsSpeaking(false);
+      setCurrentEmotion('IDLE');
       if (isListeningRef.current) {
          setStatusText('Listening...');
-         try { recognitionRef.current?.start(); } catch(e){}
+         try { recognitionRef.current?.start(); } catch(err){}
+      } else {
+         setStatusText('Idle');
       }
     };
 
+    // Chrome workaround for paused state
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
   };
 
-  return { toggleListening, isListening, isSpeaking, currentEmotion, statusText, log };
+  return { toggleListening, isListening, isSpeaking, currentEmotion, statusText, log, handleTranscription, submitMessage };
 }

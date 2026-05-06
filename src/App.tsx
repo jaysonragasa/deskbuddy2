@@ -23,11 +23,12 @@ const DEFAULT_SETTINGS: MochiSettings = {
   showVideoStream: false,
   flipVideoStream: true,
   idleEmotionTimeout: 5,
-  sleepTimeout: 30
+  sleepTimeout: 30,
+  isSidebarOpen: true,
+  showSubtitles: true
 };
 
 export default function App() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [openAccordion, setOpenAccordion] = useState<string>('features');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
@@ -72,7 +73,7 @@ export default function App() {
   };
 
   const { videoRef, gaze, boundingBox, error: faceError, isLoaded: faceLoaded } = useFaceTracking(settings.faceTrackingEnabled);
-  const { toggleListening, isListening, isSpeaking, currentEmotion, statusText, log } = useVoiceAgent(settings.ollamaUrl, settings.ollamaModel);
+  const { toggleListening, isListening, isSpeaking, currentEmotion, statusText, log, handleTranscription, submitMessage } = useVoiceAgent(settings.ollamaUrl, settings.ollamaModel);
 
   const [idleState, setIdleState] = useState<'ACTIVE' | 'IDLE_RANDOM' | 'SLEEPING'>('ACTIVE');
   const [randomEmotion, setRandomEmotion] = useState<any>('IDLE');
@@ -80,7 +81,7 @@ export default function App() {
   const wakeUpTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActiveTime = useRef<number>(Date.now());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showSubtitles, setShowSubtitles] = useState(true);
+  const [testMessage, setTestMessage] = useState('');
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -169,14 +170,14 @@ export default function App() {
     <div className="flex flex-col md:flex-row h-screen bg-black text-gray-100 font-sans overflow-hidden relative">
       {/* Sidebar Config */}
       <div 
-        className={`w-full md:w-80 bg-gray-900 flex-shrink-0 border-r border-gray-800 flex flex-col p-6 overflow-y-auto shadow-xl transition-all duration-300 h-full z-20 absolute md:relative top-0 left-0 ${isSidebarOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:translate-x-0 md:-ml-80'}`}
+        className={`w-full md:w-80 bg-gray-900 flex-shrink-0 border-r border-gray-800 flex flex-col p-6 overflow-y-auto shadow-xl transition-all duration-300 h-full z-20 absolute md:relative top-0 left-0 ${settings.isSidebarOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:translate-x-0 md:-ml-80'}`}
       >
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2 text-white">
              <Settings className="w-6 h-6 text-blue-400" /> Mochi AI
           </h1>
           <button 
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => setSettings(s => ({ ...s, isSidebarOpen: false }))}
             className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -478,6 +479,36 @@ export default function App() {
                    )}
                    {modelFetchError && <p className="text-red-400 text-xs mt-1">{modelFetchError}</p>}
                </div>
+               <div className="pt-2 border-t border-gray-800">
+                   <label className="block text-xs font-medium mb-1 text-gray-400">Test Message</label>
+                   <div className="flex gap-2">
+                     <input
+                         type="text"
+                         value={testMessage}
+                         onChange={(e) => setTestMessage(e.target.value)}
+                         onKeyDown={(e) => {
+                           if (e.key === 'Enter' && testMessage.trim()) {
+                             submitMessage(testMessage);
+                             setTestMessage('');
+                           }
+                         }}
+                         className="flex-1 text-sm p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-500"
+                         placeholder="Say hello..."
+                     />
+                     <button
+                         onClick={() => {
+                           if (testMessage.trim()) {
+                             submitMessage(testMessage);
+                             setTestMessage('');
+                           }
+                         }}
+                         disabled={!testMessage.trim()}
+                         className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                     >
+                       Send
+                     </button>
+                   </div>
+               </div>
                <p className="text-xs text-amber-400 bg-amber-900/20 p-3 rounded-lg border border-amber-800/30 leading-relaxed">
                   If Ollama sits on HTTP but this app is on HTTPS, your browser might block the mic or network requests. Run Ollama with <code className="bg-amber-900/50 px-1 py-0.5 rounded text-amber-300 font-semibold">OLLAMA_ORIGINS="*"</code>
                </p>
@@ -535,8 +566,8 @@ export default function App() {
       >
         {/* Toggle Sidebar Button */}
         <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`absolute top-6 left-6 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          onClick={() => setSettings(s => ({ ...s, isSidebarOpen: !s.isSidebarOpen }))}
+          className={`absolute top-6 left-6 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 ${settings.isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >
           <Settings className="w-5 h-5" />
         </button>
@@ -551,10 +582,10 @@ export default function App() {
 
         {/* Toggle Subtitles Button */}
         <button 
-          onClick={(e) => { e.stopPropagation(); setShowSubtitles(!showSubtitles); }}
+          onClick={(e) => { e.stopPropagation(); setSettings(s => ({ ...s, showSubtitles: !s.showSubtitles })); }}
           className="absolute top-6 right-20 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 opacity-100"
         >
-          {showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
+          {settings.showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
         </button>
         
         <MochiFace
@@ -575,9 +606,9 @@ export default function App() {
         />
 
         {/* Text dialogue */}
-        {showSubtitles && (
+        {settings.showSubtitles && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 max-w-2xl w-full flex flex-col items-center gap-3 pointer-events-none z-10 px-4">
-             {log.filter(e => e.role === 'assistant').slice(-1).map((entry, index) => (
+             {log.filter(e => e.role === 'mochi').slice(-1).map((entry, index) => (
                <div key={index} className="px-6 py-4 rounded-3xl bg-black/80 backdrop-blur-md border border-blue-500/30 text-white fill-blue-500/10 font-medium text-center text-xl w-auto max-w-full shadow-[0_0_30px_rgba(59,130,246,0.3)]">
                  {entry.text}
                </div>

@@ -19,4 +19,6 @@ export interface MochiSettings {
   flipVideoStream: boolean;
   idleEmotionTimeout: number;
   sleepTimeout: number;
+  isSidebarOpen: boolean;
+  showSubtitles: boolean;
 }
