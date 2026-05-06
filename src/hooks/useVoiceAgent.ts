@@ -115,7 +115,13 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
     try {
       const formattedUrl = ollamaUrl.endsWith('/') ? ollamaUrl.slice(0, -1) : ollamaUrl;
       
-      const systemPrompt = "You are Mochi, a lively cute visual face assistant. Keep answers short (1-2 sentences max). You must ALWAYS start your response with precisely one of these tags indicating your emotion: [IDLE], [HAPPY], [SAD], [ANGRY], [SURPRISED].";
+      const systemPrompt = `You are Mochi, a lively cute visual face assistant. Keep answers short (1-2 sentences max). 
+
+CRITICAL INSTRUCTIONS:
+1. You MUST ALWAYS start your response with EXACTLY ONE of these emotion tags: [IDLE], [HAPPY], [SAD], [ANGRY], [SURPRISED], [WINK], [SKEPTICAL], [AMAZED], [SCARED]
+2. DO NOT use any other emotion tags (e.g. do not use [AFFECTIONATE]).
+3. DO NOT output any markdown actions like *smiles* or *neutral expression*.
+4. Respond with ONLY the emotion tag followed by what you want to say.`;
       
       // logRef has the state up to the LAST render.
       // Because submitMessage and onresult call setLog AND handleTranscription synchronously,
@@ -153,17 +159,21 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
       const responseText = data.message?.content || data.response || '';
 
       let nextEmotion: Emotion = 'IDLE';
-      const tags: Emotion[] = ['IDLE', 'HAPPY', 'SAD', 'ANGRY', 'SURPRISED'];
+      const tags: Emotion[] = ['IDLE', 'HAPPY', 'SAD', 'ANGRY', 'SURPRISED', 'WINK', 'SKEPTICAL', 'AMAZED', 'SCARED'];
       let cleanText = responseText;
 
       for (const tag of tags) {
         const bracketTag = `[${tag}]`;
-        if (responseText.includes(bracketTag)) {
+        if (cleanText.includes(bracketTag)) {
           nextEmotion = tag;
-          cleanText = responseText.replace(bracketTag, '').trim();
+          cleanText = cleanText.replace(bracketTag, '').trim();
           break;
         }
       }
+
+      // Fallback: strip any remaining [UNSUPPORTED_TAGS] and *markdown actions*
+      cleanText = cleanText.replace(/\[[A-Z_]+\]/g, '').trim();
+      cleanText = cleanText.replace(/\*.*?\*/g, '').trim();
 
       setCurrentEmotion(nextEmotion);
       setLog(prev => [...prev, { role: 'mochi', text: cleanText }]);

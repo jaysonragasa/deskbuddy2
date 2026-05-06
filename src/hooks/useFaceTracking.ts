@@ -10,6 +10,7 @@ export function useFaceTracking(enabled: boolean) {
   useEffect(() => {
     if (!enabled) {
       setGaze({ x: 0, y: 0 });
+      setBoundingBox(null);
       if (videoRef.current && videoRef.current.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
         tracks.forEach(track => track.stop());
@@ -58,6 +59,7 @@ export function useFaceTracking(enabled: boolean) {
   }, [enabled]);
 
   useEffect(() => {
+    let isActive = true;
     if (!enabled || !isLoaded) return;
     
     const detectionInterval = setInterval(async () => {
@@ -67,6 +69,8 @@ export function useFaceTracking(enabled: boolean) {
           videoRef.current,
           new faceapi.TinyFaceDetectorOptions({ inputSize: 160 })
         );
+
+        if (!isActive) return;
 
         if (detection) {
           const videoWidth = videoRef.current.videoWidth;
@@ -84,12 +88,16 @@ export function useFaceTracking(enabled: boolean) {
           setGaze({ x: -normX, y: normY });
           setBoundingBox(detection.box);
         } else {
+          setGaze({ x: 0, y: 0 });
           setBoundingBox(null);
         }
       }
     }, 100);
 
-    return () => clearInterval(detectionInterval);
+    return () => {
+      isActive = false;
+      clearInterval(detectionInterval);
+    };
   }, [enabled, isLoaded]);
 
   return { videoRef, gaze, boundingBox, error, isLoaded };

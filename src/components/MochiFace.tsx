@@ -55,8 +55,8 @@ export function MochiFace({
     const interval = setInterval(() => {
       if (Math.random() > 0.4) {
         setIdleGaze({
-          x: (Math.random() - 0.5) * 0.8,
-          y: (Math.random() - 0.5) * 0.8
+          x: (Math.random() - 0.5) * 0.4,
+          y: (Math.random() - 0.5) * 0.4
         });
       } else {
         setIdleGaze({ x: 0, y: 0 }); // reset occasionally
