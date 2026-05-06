@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Settings, Mic, MicOff, Camera, Video, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef, MouseEvent } from 'react';
+import { Settings, Mic, MicOff, Camera, Video, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RefreshCw, Maximize, Minimize } from 'lucide-react';
 import { MochiFace } from './components/MochiFace';
 import { MochiSettings } from './types';
 import { useFaceTracking } from './hooks/useFaceTracking';
@@ -79,6 +79,26 @@ export default function App() {
   const [isWakingUp, setIsWakingUp] = useState(false);
   const wakeUpTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActiveTime = useRef<number>(Date.now());
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   const handleWakeUp = () => {
     if (idleState === 'SLEEPING') {
@@ -518,6 +538,14 @@ export default function App() {
           className={`absolute top-6 left-6 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >
           <Settings className="w-5 h-5" />
+        </button>
+
+        {/* Toggle Fullscreen Button */}
+        <button 
+          onClick={toggleFullscreen}
+          className="absolute top-6 right-6 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 opacity-100"
+        >
+          {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
         </button>
         
         <MochiFace
