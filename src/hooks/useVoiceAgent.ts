@@ -72,6 +72,13 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
       recognitionRef.current?.stop();
       setStatusText('Microphone off');
     } else {
+      // Initialize speech synthesis on user interaction
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+      }
+
       setIsListening(true);
       try {
         recognitionRef.current?.start();
@@ -133,6 +140,9 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
 
   const speakText = (text: string) => {
     if (!('speechSynthesis' in window)) return;
+    
+    window.speechSynthesis.cancel(); // Cancel any pending utterances to avoid getting stuck
+
     const utterance = new SpeechSynthesisUtterance(text);
 
     utterance.onstart = () => {

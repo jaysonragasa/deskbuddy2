@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, MouseEvent } from 'react';
-import { Settings, Mic, MicOff, Camera, Video, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RefreshCw, Maximize, Minimize } from 'lucide-react';
+import { Settings, Mic, MicOff, Camera, Video, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RefreshCw, Maximize, Minimize, MessageSquare, MessageSquareOff } from 'lucide-react';
 import { MochiFace } from './components/MochiFace';
 import { MochiSettings } from './types';
 import { useFaceTracking } from './hooks/useFaceTracking';
@@ -80,6 +80,7 @@ export default function App() {
   const wakeUpTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActiveTime = useRef<number>(Date.now());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSubtitles, setShowSubtitles] = useState(true);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -547,6 +548,14 @@ export default function App() {
         >
           {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
         </button>
+
+        {/* Toggle Subtitles Button */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); setShowSubtitles(!showSubtitles); }}
+          className="absolute top-6 right-20 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 opacity-100"
+        >
+          {showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
+        </button>
         
         <MochiFace
             gaze={gaze}
@@ -564,6 +573,17 @@ export default function App() {
             isSleeping={idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO'}
             isWakingUp={isWakingUp}
         />
+
+        {/* Text dialogue */}
+        {showSubtitles && (
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 max-w-2xl w-full flex flex-col items-center gap-3 pointer-events-none z-10 px-4">
+             {log.filter(e => e.role === 'assistant').slice(-1).map((entry, index) => (
+               <div key={index} className="px-6 py-4 rounded-3xl bg-black/80 backdrop-blur-md border border-blue-500/30 text-white fill-blue-500/10 font-medium text-center text-xl w-auto max-w-full shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                 {entry.text}
+               </div>
+             ))}
+          </div>
+        )}
 
         {/* Debug Video stream view (visible when face tracking is active) */}
         <div className={`absolute bottom-6 right-6 w-48 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-4 border-white transition-all duration-500 origin-bottom-right overflow-hidden bg-black ${settings.faceTrackingEnabled && settings.showVideoStream ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
