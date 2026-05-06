@@ -7,6 +7,11 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
   const [currentEmotion, setCurrentEmotion] = useState<Emotion>('IDLE');
   const [statusText, setStatusText] = useState('Idle');
   const [log, setLog] = useState<{ role: 'user' | 'mochi', text: string }[]>([]);
+  const logRef = useRef<{ role: 'user' | 'mochi', text: string }[]>([]);
+
+  useEffect(() => {
+    logRef.current = log;
+  }, [log]);
 
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(isListening);
@@ -109,12 +114,35 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
 
     try {
       const formattedUrl = ollamaUrl.endsWith('/') ? ollamaUrl.slice(0, -1) : ollamaUrl;
-      const res = await fetch(`${formattedUrl}/api/generate`, {
+      
+      const systemPrompt = "You are Mochi, a lively cute visual face assistant. Keep answers short (1-2 sentences max). You must ALWAYS start your response with precisely one of these tags indicating your emotion: [IDLE], [HAPPY], [SAD], [ANGRY], [SURPRISED].";
+      
+      // logRef has the state up to the LAST render.
+      // Because submitMessage and onresult call setLog AND handleTranscription synchronously,
+      // logRef MIGHT not have the latest user text yet. 
+      // But wait! submitMessage/onresult adds the user message to log. We can map whatever is in logRef.current 
+      // (which doesn't include the NEW message yet because state update is async),
+      // and then manually add the NEW user message.
+      const history = logRef.current.map(entry => ({
+        role: entry.role === 'mochi' ? 'assistant' : 'user',
+        content: entry.text
+      }));
+
+      // Add the new message
+      history.push({ role: 'user', content: `User said: "${text}"\n\nMochi says:` });
+
+      // Keep only last 10 messages to avoid huge prompts
+      const recentHistory = history.slice(-10);
+
+      const res = await fetch(`${formattedUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: ollamaModel || 'llama3',
-          prompt: `You are Mochi, a lively cute visual face assistant. Keep answers short (1-2 sentences max). You must ALWAYS prefix your response with precisely one of these tags: [IDLE], [HAPPY], [SAD], [ANGRY], [SURPRISED].\n\nUser said: "${text}"\n\nMochi says:`,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...recentHistory
+          ],
           stream: false
         })
       });
@@ -122,7 +150,7 @@ export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
       if (!res.ok) throw new Error('Ollama HTTP error');
 
       const data = await res.json();
-      const responseText = data.response;
+      const responseText = data.message?.content || data.response || '';
 
       let nextEmotion: Emotion = 'IDLE';
       const tags: Emotion[] = ['IDLE', 'HAPPY', 'SAD', 'ANGRY', 'SURPRISED'];
