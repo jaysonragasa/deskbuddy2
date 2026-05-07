@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Emotion } from '../types';
+import { MOCHI_TOOLS, handleToolCall } from '../utils/tools';
 
-export function useVoiceAgent(ollamaUrl: string, ollamaModel: string) {
+export function useVoiceAgent(ollamaUrl: string, ollamaModel: string, toolsEnabled: boolean) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<Emotion>('IDLE');
   const [statusText, setStatusText] = useState('Idle');
-  const [log, setLog] = useState<{ role: 'user' | 'mochi', text: string }[]>([]);
-  const logRef = useRef<{ role: 'user' | 'mochi', text: string }[]>([]);
+  const [log, setLog] = useState<{ role: 'user' | 'mochi' | 'system', text: string }[]>([]);
+  const logRef = useRef<{ role: 'user' | 'mochi' | 'system', text: string }[]>([]);
 
   useEffect(() => {
     logRef.current = log;
@@ -123,40 +124,65 @@ CRITICAL INSTRUCTIONS:
 3. DO NOT output any markdown actions like *smiles* or *neutral expression*.
 4. Respond with ONLY the emotion tag followed by what you want to say.`;
       
-      // logRef has the state up to the LAST render.
-      // Because submitMessage and onresult call setLog AND handleTranscription synchronously,
-      // logRef MIGHT not have the latest user text yet. 
-      // But wait! submitMessage/onresult adds the user message to log. We can map whatever is in logRef.current 
-      // (which doesn't include the NEW message yet because state update is async),
-      // and then manually add the NEW user message.
       const history = logRef.current.map(entry => ({
-        role: entry.role === 'mochi' ? 'assistant' : 'user',
+        role: entry.role === 'mochi' ? 'assistant' : (entry.role === 'system' ? 'system' : 'user'),
         content: entry.text
       }));
 
-      // Add the new message
-      history.push({ role: 'user', content: `User said: "${text}"\n\nMochi says:` });
+      history.push({ role: 'user', content: text });
 
-      // Keep only last 10 messages to avoid huge prompts
-      const recentHistory = history.slice(-10);
+      let currentMessages = [
+        { role: 'system', content: systemPrompt },
+        ...history.slice(-15) // keep more context
+      ];
 
-      const res = await fetch(`${formattedUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      let requiresToolCall = true;
+      let finalData;
+
+      while (requiresToolCall) {
+        requiresToolCall = false;
+
+        const payload: any = {
           model: ollamaModel || 'llama3',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...recentHistory
-          ],
+          messages: currentMessages,
           stream: false
-        })
-      });
+        };
 
-      if (!res.ok) throw new Error('Ollama HTTP error');
+        if (toolsEnabled) {
+          payload.tools = MOCHI_TOOLS;
+        }
 
-      const data = await res.json();
-      const responseText = data.message?.content || data.response || '';
+        const res = await fetch(`${formattedUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('Ollama HTTP error');
+
+        const data = await res.json();
+        
+        if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
+          // Ollama made a tool call
+          currentMessages.push(data.message);
+          
+          for (const tool of data.message.tool_calls) {
+            setStatusText(`Running tool: ${tool.function.name}...`);
+            const toolOutput = await handleToolCall(tool);
+            currentMessages.push({
+              role: 'tool',
+              content: JSON.stringify(toolOutput)
+            });
+          }
+          
+          // Re-trigger loop with the tool output
+          requiresToolCall = true;
+        } else {
+          finalData = data;
+        }
+      }
+
+      const responseText = finalData.message?.content || finalData.response || '';
 
       let nextEmotion: Emotion = 'IDLE';
       const tags: Emotion[] = ['IDLE', 'HAPPY', 'SAD', 'ANGRY', 'SURPRISED', 'WINK', 'SKEPTICAL', 'AMAZED', 'SCARED'];

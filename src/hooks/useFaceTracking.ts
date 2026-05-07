@@ -6,11 +6,54 @@ export function useFaceTracking(enabled: boolean) {
   const [boundingBox, setBoundingBox] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [recognizedName, setRecognizedName] = useState<string | null>(null);
+
+  const faceMatcherRef = useRef<any>(null);
+  const lastDescriptorRef = useRef<Float32Array | null>(null);
+
+  const updateFaceMatcher = () => {
+    try {
+      const stored = localStorage.getItem('mochiFaces');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const faceapi = (window as any).faceapi;
+        if (!faceapi) return;
+        
+        const labeledDescriptors = Object.keys(parsed).map(name => {
+          return new faceapi.LabeledFaceDescriptors(
+            name,
+            [new Float32Array(parsed[name])]
+          );
+        });
+        
+        if (labeledDescriptors.length > 0) {
+          faceMatcherRef.current = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    const handleRegister = (e: CustomEvent) => {
+      const name = e.detail.name;
+      if (lastDescriptorRef.current) {
+        const stored = JSON.parse(localStorage.getItem('mochiFaces') || '{}');
+        stored[name] = Array.from(lastDescriptorRef.current);
+        localStorage.setItem('mochiFaces', JSON.stringify(stored));
+        updateFaceMatcher();
+      }
+    };
+    window.addEventListener('MOCHI_REGISTER_FACE' as any, handleRegister);
+    return () => window.removeEventListener('MOCHI_REGISTER_FACE' as any, handleRegister);
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
       setGaze({ x: 0, y: 0 });
       setBoundingBox(null);
+      setRecognizedName(null);
       if (videoRef.current && videoRef.current.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
         tracks.forEach(track => track.stop());
@@ -31,7 +74,15 @@ export function useFaceTracking(enabled: boolean) {
         }
 
         const faceapi = (window as any).faceapi;
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models');
+        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+
+        updateFaceMatcher();
 
         if (isUnmounted) return;
         setIsLoaded(true);
@@ -62,21 +113,25 @@ export function useFaceTracking(enabled: boolean) {
     let isActive = true;
     if (!enabled || !isLoaded) return;
     
+    // We poll recognize name to not switch wildly
+    const recognizedCounts: Record<string, number> = {};
+
     const detectionInterval = setInterval(async () => {
       if (videoRef.current && videoRef.current.readyState === 4) {
         const faceapi = (window as any).faceapi;
         const detection = await faceapi.detectSingleFace(
           videoRef.current,
           new faceapi.TinyFaceDetectorOptions({ inputSize: 160 })
-        );
+        ).withFaceLandmarks().withFaceDescriptor();
 
         if (!isActive) return;
 
         if (detection) {
+          lastDescriptorRef.current = detection.descriptor;
           const videoWidth = videoRef.current.videoWidth;
           const videoHeight = videoRef.current.videoHeight;
-          const centerX = detection.box.x + (detection.box.width / 2);
-          const centerY = detection.box.y + (detection.box.height / 2);
+          const centerX = detection.detection.box.x + (detection.detection.box.width / 2);
+          const centerY = detection.detection.box.y + (detection.detection.box.height / 2);
 
           let normX = (centerX / videoWidth) * 2 - 1;
           let normY = (centerY / videoHeight) * 2 - 1;
@@ -86,10 +141,20 @@ export function useFaceTracking(enabled: boolean) {
           normY = Math.max(-1, Math.min(1, normY * 1.5));
 
           setGaze({ x: -normX, y: normY });
-          setBoundingBox(detection.box);
+          setBoundingBox(detection.detection.box);
+
+          if (faceMatcherRef.current) {
+            const match = faceMatcherRef.current.findBestMatch(detection.descriptor);
+            if (match.label !== 'unknown') {
+              setRecognizedName(match.label);
+            } else {
+              setRecognizedName(null);
+            }
+          }
         } else {
           setGaze({ x: 0, y: 0 });
           setBoundingBox(null);
+          setRecognizedName(null);
         }
       }
     }, 100);
@@ -100,5 +165,5 @@ export function useFaceTracking(enabled: boolean) {
     };
   }, [enabled, isLoaded]);
 
-  return { videoRef, gaze, boundingBox, error, isLoaded };
+  return { videoRef, gaze, boundingBox, error, isLoaded, recognizedName };
 }

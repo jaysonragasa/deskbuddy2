@@ -35,7 +35,6 @@ export function MochiFace({
   isSleeping = false,
   isWakingUp = false
 }: Props) {
-  const [idleGaze, setIdleGaze] = useState({ x: 0, y: 0 });
   const [isBlinking, setIsBlinking] = useState(false);
 
   // Blinking animation
@@ -50,26 +49,7 @@ export function MochiFace({
     return () => window.clearTimeout(timeoutId);
   }, []);
 
-  // Idle wandering gaze animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.4) {
-        setIdleGaze({
-          x: (Math.random() - 0.5) * 0.4,
-          y: (Math.random() - 0.5) * 0.4
-        });
-      } else {
-        setIdleGaze({ x: 0, y: 0 }); // reset occasionally
-      }
-    }, 1500 + Math.random() * 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const hasActiveGaze = Math.abs(gaze.x) > 0.01 || Math.abs(gaze.y) > 0.01;
-  const actualGaze = {
-    x: hasActiveGaze ? gaze.x : idleGaze.x,
-    y: hasActiveGaze ? gaze.y : idleGaze.y,
-  };
+  const actualGaze = gaze;
 
   const pupilX = actualGaze.x * gazeScale;
   const pupilY = actualGaze.y * gazeScale;

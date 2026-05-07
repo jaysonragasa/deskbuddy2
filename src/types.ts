@@ -1,8 +1,15 @@
 export type Emotion = 'IDLE' | 'HAPPY' | 'SAD' | 'ANGRY' | 'SURPRISED' | 'WINK' | 'SKEPTICAL' | 'AMAZED' | 'SCARED';
 
+export interface LogEntry {
+  role: 'user' | 'mochi' | 'system';
+  text: string;
+}
+
 export interface MochiSettings {
   ollamaUrl: string;
   ollamaModel: string;
+  openWeatherApiKey: string;
+  toolsEnabled: boolean;
   faceTrackingEnabled: boolean;
   voiceEnabled: boolean;
   manualEmotion: Emotion | 'AUTO';
