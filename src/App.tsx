@@ -76,6 +76,7 @@ export default function App() {
   const wakeUpTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActiveTime = useRef<number>(Date.now());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCameraMaximized, setIsCameraMaximized] = useState(false);
   const [testMessage, setTestMessage] = useState('');
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(false);
 
@@ -223,22 +224,24 @@ export default function App() {
           {settings.showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
         </button>
         
-        <MochiFace
-            gaze={gaze}
-            emotion={displayedEmotion}
-            isSpeaking={isSpeaking}
-            scale={settings.eyeScale}
-            eyeWidthScale={settings.eyeWidthScale}
-            eyeHeightScale={settings.eyeHeightScale}
-            gazeScale={settings.gazeScale}
-            showMouth={settings.showMouth}
-            faceColor={settings.faceColor}
-            faceGlow={settings.faceGlow}
-            eyeDistance={settings.eyeDistance}
-            mouthYOffset={settings.mouthYOffset}
-            isSleeping={idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO'}
-            isWakingUp={isWakingUp}
-        />
+        <div className="relative z-10 w-full flex-1 flex items-center justify-center pointer-events-none">
+          <MochiFace
+              gaze={gaze}
+              emotion={displayedEmotion}
+              isSpeaking={isSpeaking}
+              scale={settings.eyeScale}
+              eyeWidthScale={settings.eyeWidthScale}
+              eyeHeightScale={settings.eyeHeightScale}
+              gazeScale={settings.gazeScale}
+              showMouth={settings.showMouth}
+              faceColor={settings.faceColor}
+              faceGlow={settings.faceGlow}
+              eyeDistance={settings.eyeDistance}
+              mouthYOffset={settings.mouthYOffset}
+              isSleeping={idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO'}
+              isWakingUp={isWakingUp}
+          />
+        </div>
 
         {settings.showSubtitles && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 max-w-2xl w-full flex flex-col items-center gap-3 pointer-events-none z-10 px-4">
@@ -254,8 +257,21 @@ export default function App() {
           </div>
         )}
 
-        <div className={`absolute bottom-6 right-6 w-48 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-4 border-white transition-all duration-500 origin-bottom-right overflow-hidden bg-black ${settings.faceTrackingEnabled && settings.showVideoStream ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
-          <div className="relative w-full h-full aspect-[4/3]">
+        <div className={`absolute transition-all duration-500 origin-bottom-right overflow-hidden bg-black ${
+          settings.faceTrackingEnabled && settings.showVideoStream ? 'opacity-100 scale-100 block' : 'opacity-0 scale-90 pointer-events-none'
+        } ${
+          isCameraMaximized 
+            ? 'inset-0 w-full h-full rounded-none border-none z-0' 
+            : 'bottom-6 right-6 w-48 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-4 border-white z-20 hover:scale-105'
+        }`}>
+          <div className={`relative w-full h-full ${!isCameraMaximized ? 'aspect-[4/3]' : ''}`}>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsCameraMaximized(!isCameraMaximized); }}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors z-20 border border-white/20"
+                title={isCameraMaximized ? "Minimize Camera" : "Maximize Camera"}
+              >
+                {isCameraMaximized ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              </button>
               <video
                   ref={videoRef}
                   autoPlay
