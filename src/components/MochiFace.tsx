@@ -17,6 +17,7 @@ interface Props {
   mouthYOffset?: number;
   isSleeping?: boolean;
   isWakingUp?: boolean;
+  isIdleRandom?: boolean;
 }
 
 export function MochiFace({ 
@@ -33,9 +34,12 @@ export function MochiFace({
   eyeDistance = 1.0,
   mouthYOffset = 0,
   isSleeping = false,
-  isWakingUp = false
+  isWakingUp = false,
+  isIdleRandom = false
 }: Props) {
   const [isBlinking, setIsBlinking] = useState(false);
+  const [randomAction, setRandomAction] = useState<'NONE' | 'JUMP' | 'LOOK_AROUND' | 'THINKING' | 'EXPLORE' | 'WALK_OFF'>('NONE');
+  const [randomGaze, setRandomGaze] = useState({ x: 0, y: 0 });
 
   // Blinking animation
   useEffect(() => {
@@ -49,7 +53,90 @@ export function MochiFace({
     return () => window.clearTimeout(timeoutId);
   }, []);
 
-  const actualGaze = gaze;
+  // Idle animations
+  useEffect(() => {
+    let timeoutId: number;
+    let lookIntervalId: number;
+    
+    if (isIdleRandom && !isSleeping && !isSpeaking) {
+      const triggerAction = () => {
+        const actions = ['NONE', 'JUMP', 'LOOK_AROUND', 'THINKING', 'EXPLORE'];
+        const action = actions[Math.floor(Math.random() * actions.length)] as any;
+        setRandomAction(action);
+        
+        if (action === 'JUMP') {
+          timeoutId = window.setTimeout(() => setRandomAction('NONE'), 1500);
+        } else if (action === 'EXPLORE') {
+           let looks = 0;
+           lookIntervalId = window.setInterval(() => {
+             setRandomGaze({
+                 x: Math.random() > 0.5 ? 0.8 : -0.8,
+                 y: (Math.random() * 2 - 1) * 0.4,
+             });
+             looks++;
+             if (looks > 3) {
+                 clearInterval(lookIntervalId);
+                 setRandomGaze({ x: 0, y: 0 });
+                 setRandomAction('WALK_OFF');
+                 timeoutId = window.setTimeout(() => setRandomAction('NONE'), 4000);
+             }
+           }, 500);
+           // We do an early return since timeoutId is set inside
+           return;
+        } else if (action === 'LOOK_AROUND') {
+           let looks = 0;
+           lookIntervalId = window.setInterval(() => {
+             setRandomGaze({
+                 x: (Math.random() * 2 - 1) * 0.8,
+                 y: (Math.random() * 2 - 1) * 0.8,
+             });
+             looks++;
+             if (looks > 4) {
+                 clearInterval(lookIntervalId);
+                 setRandomAction('NONE');
+                 setRandomGaze({ x: 0, y: 0 });
+             }
+           }, 500);
+        } else if (action === 'THINKING') {
+           let looks = 0;
+           lookIntervalId = window.setInterval(() => {
+             setRandomGaze({
+                 x: looks % 2 === 0 ? 0.7 : -0.7,
+                 y: -0.8, // look up
+             });
+             looks++;
+             if (looks > 5) {
+                 clearInterval(lookIntervalId);
+                 setRandomAction('NONE');
+                 setRandomGaze({ x: 0, y: 0 });
+             }
+           }, 400);
+        } else {
+            setRandomGaze({ x: 0, y: 0 });
+            timeoutId = window.setTimeout(triggerAction, Math.random() * 2000 + 2000);
+            return;
+        }
+        
+        // Wait for current action to finish before triggering next
+        timeoutId = window.setTimeout(triggerAction, Math.random() * 4000 + 3000);
+      };
+      timeoutId = window.setTimeout(triggerAction, Math.random() * 2000 + 1000);
+    } else {
+      setRandomAction('NONE');
+      setRandomGaze({ x: 0, y: 0 });
+    }
+    
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(lookIntervalId);
+    };
+  }, [isIdleRandom, isSleeping, isSpeaking]);
+
+  const targetGaze = (randomAction === 'LOOK_AROUND' || randomAction === 'THINKING' || randomAction === 'EXPLORE') 
+    ? randomGaze 
+    : gaze;
+
+  const actualGaze = targetGaze;
 
   const pupilX = actualGaze.x * gazeScale;
   const pupilY = actualGaze.y * gazeScale;
@@ -124,14 +211,22 @@ export function MochiFace({
   };
 
   const actualFaceColor = isWakingUp ? '#ffffff' : faceColor;
-  const filterString = faceGlow ? `drop-shadow(0 0 ${isWakingUp ? '40px' : '15px'} ${actualFaceColor})` : 'none';
+  const filterString = faceGlow ? `drop-shadow(0 0 ${(isWakingUp || randomAction === 'THINKING') ? '40px' : '15px'} ${actualFaceColor})` : 'none';
 
   return (
     <motion.div
        className="relative aspect-square w-full max-w-[500px]"
        initial={false}
-       animate={{ scale: isSpeaking ? 1.02 : 1 }}
-       transition={{ type: "spring", stiffness: 300, damping: 20 }}
+       animate={{ 
+           scale: isSpeaking ? 1.02 : 1,
+           y: randomAction === 'JUMP' ? [0, -50, 0, -25, 0] : 0,
+           x: randomAction === 'WALK_OFF' ? [0, 1500, 1500, 0] : 0
+       }}
+       transition={{ 
+           scale: { type: "spring", stiffness: 300, damping: 20 },
+           y: { duration: 0.6, times: [0, 0.25, 0.5, 0.75, 1], ease: "easeInOut" },
+           x: { duration: 4, times: [0, 0.25, 0.75, 1], ease: "easeInOut" }
+       }}
     >
       <motion.svg 
         viewBox="0 0 400 400" 

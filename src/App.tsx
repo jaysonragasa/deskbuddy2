@@ -60,6 +60,21 @@ export default function App() {
   useEffect(() => {
     if (recognizedName && recognizedName !== lastGreetedName.current) {
       lastGreetedName.current = recognizedName;
+      
+      // Wake up if sleeping
+      if (idleState === 'SLEEPING') {
+        setIsWakingUp(true);
+        if (wakeUpTimeoutRef.current) clearTimeout(wakeUpTimeoutRef.current);
+        wakeUpTimeoutRef.current = setTimeout(() => {
+          setIsWakingUp(false);
+          setIdleState('ACTIVE');
+          lastActiveTime.current = Date.now();
+        }, 2000);
+      } else {
+        setIdleState('ACTIVE');
+        lastActiveTime.current = Date.now();
+      }
+      
       submitMessage(`System Context: Mochi just recognized the user named ${recognizedName}. Greet them happily in a short sentence.`);
     } else if (!recognizedName) {
       // Set a small timeout so we don't clear the last greeted name immediately from a flicker
@@ -81,13 +96,19 @@ export default function App() {
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(false);
 
   useEffect(() => {
-    if (isSpeaking) {
+    // Show subtitles if speaking or if the last message in log is from mochi
+    const lastEntry = log[log.length - 1];
+    const hasRecentMochiMessage = lastEntry && lastEntry.role === 'mochi';
+    
+    if (isSpeaking || hasRecentMochiMessage) {
       setIsSubtitleVisible(true);
-    } else {
-      const timer = setTimeout(() => setIsSubtitleVisible(false), 3000);
+    }
+    
+    if (!isSpeaking) {
+      const timer = setTimeout(() => setIsSubtitleVisible(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, [isSpeaking]);
+  }, [isSpeaking, log]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -110,7 +131,7 @@ export default function App() {
     }
   };
 
-  const isBusy = isListening || isSpeaking || currentEmotion !== 'IDLE' || settings.manualEmotion !== 'AUTO';
+  const isBusy = isListening || isSpeaking || currentEmotion !== 'IDLE' || settings.manualEmotion !== 'AUTO' || statusText === 'Thinking...' || statusText.startsWith('Running tool');
 
   useEffect(() => {
     if (isBusy) {
@@ -122,6 +143,13 @@ export default function App() {
   }, [isBusy]);
 
   const handleWakeUp = () => {
+    // Initialize speech synthesis on user interaction to unblock audio
+    if ('speechSynthesis' in window && !isListening && !isSpeaking) {
+      const u = new SpeechSynthesisUtterance('');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    }
+
     if (idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO') {
       setIsWakingUp(true);
       if (wakeUpTimeoutRef.current) clearTimeout(wakeUpTimeoutRef.current);
@@ -240,6 +268,7 @@ export default function App() {
               mouthYOffset={settings.mouthYOffset}
               isSleeping={idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO'}
               isWakingUp={isWakingUp}
+              isIdleRandom={idleState === 'IDLE_RANDOM' && settings.manualEmotion === 'AUTO'}
           />
         </div>
 
