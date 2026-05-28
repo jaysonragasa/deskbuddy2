@@ -27,14 +27,16 @@ export function ClockFace({ settings }: ClockFaceProps) {
 
   const { hourRotation, minuteRotation, secondRotation } = getRotation();
 
-  const faceColor = settings.faceColor || '#ffffff';
+  const clockColor = settings.clockColor || '#ffffff';
+
+  if (settings.clockType === 'DIGITAL') return null;
 
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden pb-10 md:pb-0">
       <svg 
         viewBox="-50 -50 100 100" 
         className="w-[100vmin] h-[100vmin] max-w-full max-h-full opacity-60"
-        style={{ filter: settings.faceGlow ? `drop-shadow(0 0 5px ${faceColor})` : 'none' }}
+        style={{ filter: settings.faceGlow ? `drop-shadow(0 0 5px ${clockColor})` : 'none' }}
       >
         {/* Minute ticks */}
         {Array.from({ length: 60 }).map((_, i) => {
@@ -46,7 +48,7 @@ export function ClockFace({ settings }: ClockFaceProps) {
               y1={isHour ? "-45" : "-47"}
               x2="0"
               y2="-50"
-              stroke={faceColor}
+              stroke={clockColor}
               strokeWidth={isHour ? "1" : "0.5"}
               transform={`rotate(${i * 6})`}
               opacity={isHour ? 0.8 : 0.4}
@@ -67,7 +69,7 @@ export function ClockFace({ settings }: ClockFaceProps) {
               key={i}
               x={x}
               y={y + 3} // Adjust for baseline
-              fill={faceColor}
+              fill={clockColor}
               fontSize="8"
               fontWeight="bold"
               textAnchor="middle"
@@ -86,7 +88,7 @@ export function ClockFace({ settings }: ClockFaceProps) {
           y1="0"
           x2="0"
           y2="-22"
-          stroke={faceColor}
+          stroke={clockColor}
           strokeWidth="2.5"
           strokeLinecap="round"
           transform={`rotate(${hourRotation})`}
@@ -99,7 +101,7 @@ export function ClockFace({ settings }: ClockFaceProps) {
           y1="0"
           x2="0"
           y2="-34"
-          stroke={faceColor}
+          stroke={clockColor}
           strokeWidth="1.5"
           strokeLinecap="round"
           transform={`rotate(${minuteRotation})`}

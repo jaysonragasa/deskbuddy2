@@ -28,6 +28,7 @@ export interface MochiSettings {
   sleepTimeout: number;
   isSidebarOpen: boolean;
   showSubtitles: boolean;
-  showClockFace: boolean;
+  clockType: 'NONE' | 'ANALOG' | 'DIGITAL';
+  clockColor: string;
   keepAwake: boolean;
 }

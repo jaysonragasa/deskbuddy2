@@ -234,7 +234,11 @@ export default function App() {
       
       const secondsSinceActive = (now - lastActiveTime.current) / 1000;
       
-      if (secondsSinceActive > settings.sleepTimeout) {
+      if (settings.keepAwake && idleState === 'SLEEPING') {
+        handleWakeUp();
+      }
+
+      if (!settings.keepAwake && secondsSinceActive > settings.sleepTimeout) {
         if (idleState !== 'SLEEPING') {
           setIdleState('SLEEPING');
         }
@@ -253,7 +257,7 @@ export default function App() {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isBusy, idleState, settings.sleepTimeout, settings.idleEmotionTimeout]);
+  }, [isBusy, idleState, settings.sleepTimeout, settings.idleEmotionTimeout, settings.keepAwake]);
 
   const displayedEmotion = settings.manualEmotion !== 'AUTO'
       ? settings.manualEmotion
@@ -303,7 +307,7 @@ export default function App() {
         onTouchMove={onTouchMove}
       >
         
-        {settings.showClockFace && <ClockFace settings={settings} />}
+        {settings.clockType !== 'NONE' && <ClockFace settings={settings} />}
         
         <div className="relative z-10 w-full flex-1 flex items-center justify-center pointer-events-none">
           <MochiFace
@@ -319,10 +323,12 @@ export default function App() {
               faceGlow={settings.faceGlow}
               eyeDistance={settings.eyeDistance}
               mouthYOffset={settings.mouthYOffset}
-              isSleeping={idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO'}
+              isSleeping={(idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO') && !isWakingUp}
               isWakingUp={isWakingUp}
               isIdleRandom={idleState === 'IDLE_RANDOM' && settings.manualEmotion === 'AUTO'}
-              showClockFace={settings.showClockFace}
+              showClockFace={settings.clockType !== 'NONE'}
+              clockType={settings.clockType}
+              clockColor={settings.clockColor}
           />
         </div>
 

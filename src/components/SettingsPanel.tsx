@@ -174,14 +174,28 @@ export function SettingsPanel({
                  </button>
                </div>
                <div className="flex items-center justify-between py-2 border-b border-gray-800">
-                 <label className="text-xs font-medium text-gray-400">Show Clock Face</label>
-                 <button 
-                     onClick={() => setSettings(s => ({...s, showClockFace: !s.showClockFace}))}
-                     className={`w-10 h-6 rounded-full relative transition-colors ${settings.showClockFace ? 'bg-blue-600' : 'bg-gray-700'}`}
+                 <label className="text-xs font-medium text-gray-400">Clock Type</label>
+                 <select
+                   value={settings.clockType || 'NONE'}
+                   onChange={(e) => setSettings(s => ({...s, clockType: e.target.value as any}))}
+                   className="bg-gray-800 text-white text-xs rounded px-2 py-1 border border-gray-700 outline-none"
                  >
-                     <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.showClockFace ? 'translate-x-4' : 'translate-x-0'}`} />
-                 </button>
+                   <option value="NONE">None</option>
+                   <option value="ANALOG">Analog</option>
+                   <option value="DIGITAL">Digital</option>
+                 </select>
                </div>
+               {settings.clockType !== 'NONE' && (
+                 <div className="py-2 border-b border-gray-800">
+                   <label className="block text-xs font-medium mb-1 text-gray-400">Clock Color</label>
+                   <input
+                       type="color"
+                       value={settings.clockColor || '#ffffff'}
+                       onChange={(e) => setSettings(s => ({...s, clockColor: e.target.value}))}
+                       className="w-full h-10 rounded cursor-pointer bg-gray-900 border border-gray-700"
+                   />
+                 </div>
+               )}
                <div className="flex items-center justify-between py-2 border-b border-gray-800">
                  <label className="text-xs font-medium text-gray-400">Keep Screen Awake</label>
                  <button 
@@ -298,10 +312,10 @@ export function SettingsPanel({
                        className="w-full accent-blue-500"
                    />
                </div>
-               <div>
-                   <div className="flex justify-between mb-1 mt-4">
+               <div className={`mt-4 ${settings.keepAwake ? 'opacity-50 pointer-events-none' : ''}`}>
+                   <div className="flex justify-between mb-1">
                      <label className="text-xs font-medium text-gray-400">Sleep Timeout</label>
-                     <span className="text-xs text-gray-500">{settings.sleepTimeout}s</span>
+                     <span className="text-xs text-gray-500">{settings.keepAwake ? 'Disabled' : `${settings.sleepTimeout}s`}</span>
                    </div>
                    <input
                        type="range"
@@ -311,6 +325,7 @@ export function SettingsPanel({
                        value={settings.sleepTimeout}
                        onChange={(e) => setSettings(s => ({...s, sleepTimeout: parseInt(e.target.value)}))}
                        className="w-full accent-blue-500"
+                       disabled={settings.keepAwake}
                    />
                </div>
              </div>
