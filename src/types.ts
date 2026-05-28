@@ -28,4 +28,5 @@ export interface MochiSettings {
   sleepTimeout: number;
   isSidebarOpen: boolean;
   showSubtitles: boolean;
+  showClockFace: boolean;
 }

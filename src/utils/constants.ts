@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: MochiSettings = {
   flipVideoStream: true,
   idleEmotionTimeout: 5,
   sleepTimeout: 30,
-  isSidebarOpen: true,
-  showSubtitles: true
+  isSidebarOpen: false,
+  showSubtitles: true,
+  showClockFace: false
 };

@@ -43,21 +43,21 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   return (
     <div 
-      className={`w-full md:w-80 bg-gray-900 flex-shrink-0 border-r border-gray-800 flex flex-col p-6 overflow-y-auto shadow-xl transition-all duration-300 h-full z-20 absolute md:relative top-0 left-0 ${settings.isSidebarOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:translate-x-0 md:-ml-80'}`}
+      className={`w-full md:w-80 bg-gray-900 flex-shrink-0 border-r border-gray-800 flex flex-col overflow-hidden shadow-xl transition-all duration-300 h-full z-50 absolute md:relative top-0 left-0 ${settings.isSidebarOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:translate-x-0 md:-ml-80'}`}
     >
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2 text-white">
-           <SettingsIcon className="w-6 h-6 text-blue-400" /> Mochi AI
+      <div className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
+        <h1 className="text-xl font-bold flex items-center gap-2 text-white">
+           <SettingsIcon className="w-5 h-5 text-blue-400" /> Mochi AI
         </h1>
         <button 
-          onClick={() => setSettings(s => ({...s, isSidebarOpen: false}))}
-          className="p-2 text-gray-400 hover:text-white"
+          onClick={(e) => { e.stopPropagation(); setSettings(s => ({...s, isSidebarOpen: false})); }}
+          className="p-2 sm:p-3 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-md"
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20">
         <div className="space-y-4 mb-4">
            <button 
              className="w-full flex justify-between items-center text-sm font-semibold text-gray-400 uppercase tracking-wider py-2"
@@ -171,6 +171,15 @@ export function SettingsPanel({
                      className={`w-10 h-6 rounded-full relative transition-colors ${settings.showMouth ? 'bg-blue-600' : 'bg-gray-700'}`}
                  >
                      <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.showMouth ? 'translate-x-4' : 'translate-x-0'}`} />
+                 </button>
+               </div>
+               <div className="flex items-center justify-between py-2 border-b border-gray-800">
+                 <label className="text-xs font-medium text-gray-400">Show Clock Face</label>
+                 <button 
+                     onClick={() => setSettings(s => ({...s, showClockFace: !s.showClockFace}))}
+                     className={`w-10 h-6 rounded-full relative transition-colors ${settings.showClockFace ? 'bg-blue-600' : 'bg-gray-700'}`}
+                 >
+                     <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.showClockFace ? 'translate-x-4' : 'translate-x-0'}`} />
                  </button>
                </div>
                <div>

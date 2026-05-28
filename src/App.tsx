@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, MouseEvent } from 'react';
 import { Settings, Mic, MicOff, Maximize, Minimize, MessageSquare, MessageSquareOff } from 'lucide-react';
+import { ClockFace } from './components/ClockFace';
 import { MochiFace } from './components/MochiFace';
 import { MochiSettings, Emotion } from './types';
 import { useFaceTracking } from './hooks/useFaceTracking';
@@ -17,10 +18,10 @@ export default function App() {
     const saved = localStorage.getItem('mochiSettings');
     if (saved) {
       try {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved), isSidebarOpen: false };
       } catch(e) {}
     }
-    return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, isSidebarOpen: false };
   });
 
   const fetchOllamaModels = async () => {
@@ -231,26 +232,28 @@ export default function App() {
         className="flex-1 relative flex flex-col items-center justify-center cursor-pointer overflow-hidden group"
         onClick={handleWakeUp}
       >
-        <button 
-          onClick={() => setSettings(s => ({ ...s, isSidebarOpen: !s.isSidebarOpen }))}
-          className={`absolute top-6 left-6 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 ${settings.isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-        >
-          <Settings className="w-5 h-5" />
-        </button>
-
-        <button 
-          onClick={(e) => toggleFullscreen(e as any)}
-          className="absolute top-6 right-6 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 opacity-100"
-        >
-          {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-        </button>
-
-        <button 
-          onClick={(e) => { e.stopPropagation(); setSettings(s => ({ ...s, showSubtitles: !s.showSubtitles })); }}
-          className="absolute top-6 right-20 z-10 p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700 opacity-100"
-        >
-          {settings.showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
-        </button>
+        <div className={`absolute left-2 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3 transition-opacity ${settings.isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setSettings(s => ({ ...s, isSidebarOpen: !s.isSidebarOpen })); }}
+            className="p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setSettings(s => ({ ...s, showSubtitles: !s.showSubtitles })); }}
+            className="p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700"
+          >
+            {settings.showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
+          </button>
+          <button 
+            onClick={(e) => toggleFullscreen(e as any)}
+            className="hidden sm:block p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700"
+          >
+            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+          </button>
+        </div>
+        
+        {settings.showClockFace && <ClockFace settings={settings} />}
         
         <div className="relative z-10 w-full flex-1 flex items-center justify-center pointer-events-none">
           <MochiFace
@@ -269,6 +272,7 @@ export default function App() {
               isSleeping={idleState === 'SLEEPING' && settings.manualEmotion === 'AUTO'}
               isWakingUp={isWakingUp}
               isIdleRandom={idleState === 'IDLE_RANDOM' && settings.manualEmotion === 'AUTO'}
+              showClockFace={settings.showClockFace}
           />
         </div>
 

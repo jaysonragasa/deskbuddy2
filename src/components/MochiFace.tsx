@@ -18,6 +18,7 @@ interface Props {
   isSleeping?: boolean;
   isWakingUp?: boolean;
   isIdleRandom?: boolean;
+  showClockFace?: boolean;
 }
 
 export function MochiFace({ 
@@ -35,7 +36,8 @@ export function MochiFace({
   mouthYOffset = 0,
   isSleeping = false,
   isWakingUp = false,
-  isIdleRandom = false
+  isIdleRandom = false,
+  showClockFace = false
 }: Props) {
   const [isBlinking, setIsBlinking] = useState(false);
   const [randomAction, setRandomAction] = useState<'NONE' | 'JUMP' | 'LOOK_AROUND' | 'THINKING' | 'EXPLORE' | 'WALK_OFF'>('NONE');
@@ -231,7 +233,6 @@ export function MochiFace({
       <motion.svg 
         viewBox="0 0 400 400" 
         className="w-full h-full overflow-visible" 
-        animate={{ filter: filterString }}
       >
         <defs>
           <clipPath id="left-eye-clip">
@@ -248,15 +249,20 @@ export function MochiFace({
           </clipPath>
         </defs>
 
-        <motion.g 
-          animate={{ scale, x: pupilX, y: pupilY }} 
-          style={{ transformOrigin: '200px 200px' }} 
-          transition={{ 
-            scale: { type: "spring", stiffness: 300, damping: 20 },
-            x: { type: "spring", stiffness: 150, damping: 15 },
-            y: { type: "spring", stiffness: 150, damping: 15 }
-          }}
-        >
+        {showClockFace && (
+            <circle cx="200" cy="200" r={40 + 100 * scale * (eyeDistance * 0.5 + 0.5)} fill="black" />
+        )}
+
+        <motion.g animate={{ filter: filterString }}>
+          <motion.g 
+            animate={{ scale, x: pupilX, y: pupilY }} 
+            style={{ transformOrigin: '200px 200px' }} 
+            transition={{ 
+              scale: { type: "spring", stiffness: 300, damping: 20 },
+              x: { type: "spring", stiffness: 150, damping: 15 },
+              y: { type: "spring", stiffness: 150, damping: 15 }
+            }}
+          >
           {/* Left Eye */}
           <motion.g animate={{ x: 200 - 80 * eyeDistance, y: 180 }}>
                  <g clipPath="url(#left-eye-clip)">
@@ -332,6 +338,7 @@ export function MochiFace({
                 >z</motion.text>
              </g>
         )}
+        </motion.g>
       </motion.svg>
     </motion.div>
   );
