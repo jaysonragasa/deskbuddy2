@@ -29,4 +29,5 @@ export interface MochiSettings {
   isSidebarOpen: boolean;
   showSubtitles: boolean;
   showClockFace: boolean;
+  keepAwake: boolean;
 }

@@ -182,6 +182,15 @@ export function SettingsPanel({
                      <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.showClockFace ? 'translate-x-4' : 'translate-x-0'}`} />
                  </button>
                </div>
+               <div className="flex items-center justify-between py-2 border-b border-gray-800">
+                 <label className="text-xs font-medium text-gray-400">Keep Screen Awake</label>
+                 <button 
+                     onClick={() => setSettings(s => ({...s, keepAwake: !s.keepAwake}))}
+                     className={`w-10 h-6 rounded-full relative transition-colors ${settings.keepAwake ? 'bg-blue-600' : 'bg-gray-700'}`}
+                 >
+                     <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.keepAwake ? 'translate-x-4' : 'translate-x-0'}`} />
+                 </button>
+               </div>
                <div>
                    <div className="flex justify-between mb-1">
                      <label className="text-xs font-medium text-gray-400">Face Scale</label>

@@ -23,5 +23,6 @@ export const DEFAULT_SETTINGS: MochiSettings = {
   sleepTimeout: 30,
   isSidebarOpen: false,
   showSubtitles: true,
-  showClockFace: false
+  showClockFace: false,
+  keepAwake: false
 };

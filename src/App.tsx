@@ -71,6 +71,43 @@ export default function App() {
     localStorage.setItem('mochiSettings', JSON.stringify(settings));
   }, [settings]);
 
+  const wakeLockRef = useRef<any>(null);
+
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          if (settings.keepAwake) {
+            wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          } else if (wakeLockRef.current) {
+            await wakeLockRef.current.release();
+            wakeLockRef.current = null;
+          }
+        } catch (err: any) {
+          console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+        }
+      }
+    };
+
+    requestWakeLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && settings.keepAwake) {
+        requestWakeLock();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [settings.keepAwake]);
+
   const toggleAccordion = (section: string) => {
     setOpenAccordion(prev => prev === section ? '' : section);
   };
