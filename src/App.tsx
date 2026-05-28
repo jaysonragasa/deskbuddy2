@@ -13,6 +13,29 @@ export default function App() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [modelFetchError, setModelFetchError] = useState<string | null>(null);
+  const [showContextMenu, setShowContextMenu] = useState(false);
+
+  const touchTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchMoved = useRef(false);
+
+  const startTouch = () => {
+    touchMoved.current = false;
+    touchTimer.current = setTimeout(() => {
+      setShowContextMenu(true);
+      if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(50);
+      }
+    }, 600);
+  };
+
+  const cancelTouch = () => {
+    if (touchTimer.current) clearTimeout(touchTimer.current);
+  };
+
+  const onTouchMove = () => {
+    touchMoved.current = true;
+    cancelTouch();
+  };
 
   const [settings, setSettings] = useState<MochiSettings>(() => {
     const saved = localStorage.getItem('mochiSettings');
@@ -230,28 +253,18 @@ export default function App() {
       {/* Main View */}
       <div 
         className="flex-1 relative flex flex-col items-center justify-center cursor-pointer overflow-hidden group"
-        onClick={handleWakeUp}
+        onClick={(e) => {
+           if (!showContextMenu && !touchMoved.current) {
+               handleWakeUp();
+           }
+        }}
+        onMouseDown={startTouch}
+        onMouseUp={cancelTouch}
+        onMouseLeave={cancelTouch}
+        onTouchStart={startTouch}
+        onTouchEnd={cancelTouch}
+        onTouchMove={onTouchMove}
       >
-        <div className={`absolute left-2 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3 transition-opacity ${settings.isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <button 
-            onClick={(e) => { e.stopPropagation(); setSettings(s => ({ ...s, isSidebarOpen: !s.isSidebarOpen })); }}
-            className="p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); setSettings(s => ({ ...s, showSubtitles: !s.showSubtitles })); }}
-            className="p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700"
-          >
-            {settings.showSubtitles ? <MessageSquare className="w-5 h-5" /> : <MessageSquareOff className="w-5 h-5" />}
-          </button>
-          <button 
-            onClick={(e) => toggleFullscreen(e as any)}
-            className="hidden sm:block p-3 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all shadow-lg border border-gray-700"
-          >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-          </button>
-        </div>
         
         {settings.showClockFace && <ClockFace settings={settings} />}
         
@@ -336,6 +349,61 @@ export default function App() {
               </div>
           )}
         </div>
+
+        {/* Context Menu Overlay */}
+        {showContextMenu && (
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center pointer-events-auto"
+            onClick={(e) => { e.stopPropagation(); setShowContextMenu(false); }}
+          >
+            <div 
+              className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-3 min-w-[200px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2 px-2">Quick Menu</h3>
+              
+              <button 
+                className="flex items-center gap-3 w-full p-3 rounded-xl bg-gray-800 text-white hover:bg-gray-700 active:bg-gray-600 transition-colors"
+                onClick={() => {
+                  setSettings(s => ({ ...s, isSidebarOpen: true }));
+                  setShowContextMenu(false);
+                }}
+              >
+                <Settings className="w-5 h-5" />
+                <span className="font-medium">Settings</span>
+              </button>
+
+              <button 
+                className="flex items-center gap-3 w-full p-3 rounded-xl bg-gray-800 text-white hover:bg-gray-700 active:bg-gray-600 transition-colors"
+                onClick={() => {
+                  setSettings(s => ({ ...s, showSubtitles: !s.showSubtitles }));
+                  setShowContextMenu(false);
+                }}
+              >
+                {settings.showSubtitles ? <MessageSquareOff className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+                <span className="font-medium">{settings.showSubtitles ? 'Hide Subs' : 'Show Subs'}</span>
+              </button>
+
+              <button 
+                className="flex items-center gap-3 w-full p-3 rounded-xl bg-gray-800 text-white hover:bg-gray-700 active:bg-gray-600 transition-colors"
+                onClick={(e) => {
+                  toggleFullscreen(e as any);
+                  setShowContextMenu(false);
+                }}
+              >
+                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                <span className="font-medium">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+              </button>
+              
+              <button 
+                className="mt-2 text-gray-400 hover:text-white p-2 text-sm text-center font-medium border border-gray-700 rounded-xl"
+                onClick={() => setShowContextMenu(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
