@@ -266,7 +266,7 @@ export default function App() {
                   : 'IDLE';
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-black text-gray-100 font-sans overflow-hidden relative">
+    <div className="flex flex-col md:flex-row h-[100dvh] w-[100dvw] bg-black text-gray-100 font-sans overflow-hidden relative">
       <SettingsPanel 
         settings={settings}
         setSettings={setSettings}
